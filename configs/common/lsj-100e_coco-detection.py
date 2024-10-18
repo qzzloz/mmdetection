@@ -1,7 +1,7 @@
 _base_ = '../_base_/default_runtime.py'
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = 'data/coco/'
+data_root = '/data/ephemeral/home/minji/dataset/'
 image_size = (1024, 1024)
 
 # Example to use different file client
@@ -18,6 +18,11 @@ image_size = (1024, 1024)
 #         'data/': 's3://openmmlab/datasets/detection/'
 #     }))
 backend_args = None
+
+metainfo = {
+    'classes': ("General trash", "Paper", "Paper pack", "Metal", "Glass", 
+           "Plastic", "Styrofoam", "Plastic bag", "Battery", "Clothing")
+}
 
 train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=backend_args),
@@ -57,32 +62,43 @@ train_dataloader = dict(
         type='RepeatDataset',
         times=4,  # simply change this from 2 to 16 for 50e - 400e training.
         dataset=dict(
-            type=dataset_type,
             data_root=data_root,
-            ann_file='annotations/instances_train2017.json',
-            data_prefix=dict(img='train2017/'),
+            type=dataset_type,
+            metainfo=metainfo,
+            ann_file='train.json',
+            data_prefix=dict(img='./'),
+            # filter_annotations=dict(min_bbox_size=32),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             pipeline=train_pipeline,
             backend_args=backend_args)))
-val_dataloader = dict(
-    batch_size=1,
-    num_workers=2,
-    persistent_workers=True,
-    drop_last=False,
-    sampler=dict(type='DefaultSampler', shuffle=False),
+# val_dataloader = dict(
+#     batch_size=1,
+#     num_workers=2,
+#     persistent_workers=True,
+#     drop_last=False,
+#     sampler=dict(type='DefaultSampler', shuffle=False),
+#     dataset=dict(
+#         type=dataset_type,
+#         data_root=data_root,
+#         ann_file='annotations/instances_val2017.json',
+#         data_prefix=dict(img='val2017/'),
+#         test_mode=True,
+#         pipeline=test_pipeline,
+#         backend_args=backend_args))
+val_dataloader = train_dataloader
+
+test_dataloader = dict(
     dataset=dict(
-        type=dataset_type,
         data_root=data_root,
-        ann_file='annotations/instances_val2017.json',
-        data_prefix=dict(img='val2017/'),
+        metainfo=metainfo,
+        ann_file=data_root+'test.json',
         test_mode=True,
-        pipeline=test_pipeline,
-        backend_args=backend_args))
-test_dataloader = val_dataloader
+        data_prefix=dict(img='./')))
+
 
 val_evaluator = dict(
     type='CocoMetric',
-    ann_file=data_root + 'annotations/instances_val2017.json',
+    ann_file=data_root + 'train.json',
     metric='bbox',
     format_only=False,
     backend_args=backend_args)
